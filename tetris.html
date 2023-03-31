@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="UTF-8">
+	<title>Tetris</title>
+</head>
+<center> 
+<body>泰賢的遊戲世界
+<script src="https://code.jquery.com/jquery-3.4.1.min.js">
+    </script>
+<style type="text/css">
+   
+    
+   /* #ATM01 {
+	width:100px;
+	height:50px;
+	border:solid blue thick;
+	border-radius:25px;
+	position: fixed;
+        top:1px;        
+       right:1px;
+        font-size: 32px;
+        color:darkred;
+	padding:50px 50px 50px 50px;
+
+}*/
+    
+    
+    #ATM {
+	width:100px;
+	height:50px;
+	border:solid red thick;
+	border-radius:25px;
+	position: fixed;
+        top:1px;        
+       right:220px;
+        font-size: 32px;
+        color:darkcyan;
+	padding:50px 50px 50px 50px;
+
+}
+    
+  
+    
+    
+    </style>
+    <script>
+    /* RunEnventTime = 블록이 내려오는 속도
+*/
+// 기본 초기화
+        
+var NB = 0;
+var init=false;
+var myCanvas;
+var Context;
+
+var Mode=1; // 1=게임중, 2=게임오버 1=遊戲中 2=遊戲結束
+const MODE_GAME=1;
+const MODE_GAMEOVER=2;
+
+var tetrix_blockbox_boxsize=25;
+var tetrix_blockbox_top=50;
+var tetrix_blockbox_left=280;
+
+var tetrix_blockbox;
+
+var score;
+
+var RunEvent;
+var RunEventTime = 500;
+var level=1;
+var exp=0;
+
+// 테트리스 블럭박스 초기화 Tetris Block 初始化
+function tetrix_blockbox_init()
+{
+    
+	// 20행 10열의 박스 생성 產生20行，10列的 箱子
+	tetrix_blockbox=new Array();
+	for(i=0;i<20;++i)
+	{
+		tetrix_blockbox.push(new Array(10));
+		// 모두 0으로 채운다 填滿 0
+		for(j=0;j<10;++j)tetrix_blockbox[i][j]=0;
+	}
+}
+
+// 5가지 타입 블록 共有5種Block
+var tetrix_block;
+
+// 현재 사용중인 블록 目前使用的Block
+var tetrix_block_this;
+
+// 5가지 블럭 초기화 初始化 5個 Blocks
+function tetrix_block_init()
+{
+	tetrix_block=new Array(); //以陣列的方式處理積木
+
+	// 첫번째 블럭 第一個積木
+	// □□□□
+	tmp=new Array();
+	tmp.push(0,0); tmp.push(0,1); tmp.push(0,2); tmp.push(0,3);
+	tetrix_block.push(tmp);
+
+	// 두번째 블럭 第二個積木
+	// □□□
+	//  □
+	tmp=new Array();
+	tmp.push(0,0); tmp.push(0,1); tmp.push(0,2); tmp.push(1,1);
+	tetrix_block.push(tmp);
+
+	// 세번째 블럭 第三個積木
+	// □□
+	//  □□
+	tmp=new Array();
+	tmp.push(0,0); tmp.push(0,1); tmp.push(1,1); tmp.push(1,2);
+	tetrix_block.push(tmp);
+
+	// 네번째 블럭 第四個積木
+	//  □□
+	// □□
+	tmp=new Array();
+	tmp.push(0,1); tmp.push(0,2); tmp.push(1,0); tmp.push(1,1);
+	tetrix_block.push(tmp);
+
+	// 다섯번째 블럭 第五個積木
+	// □□
+	// □□
+	tmp=new Array();
+	tmp.push(0,0); tmp.push(0,1); tmp.push(1,0); tmp.push(1,1);
+	tetrix_block.push(tmp);
+
+	// 여섯번째 블럭 第六個積木
+	// □□□
+	// □
+	tmp=new Array();
+	tmp.push(0,0); tmp.push(0,1); tmp.push(0,2); tmp.push(1,0);
+	tetrix_block.push(tmp);
+
+	// 일곱째 블럭
+	// □□□
+	//   □
+	tmp=new Array();
+	tmp.push(0,0); tmp.push(0,1); tmp.push(0,2); tmp.push(1,2);
+	tetrix_block.push(tmp);
+}
+
+// 현재 떨어지는 블록번호와 좌표 目前掉下來Block的坐標
+var tetrix_block_number=1;
+var tetrix_block_x=3;
+var tetrix_block_y=0;
+
+
+var bgImage = new Image();  
+var blockImage = Array();
+
+var bgSound = new Audio();
+var blockSound = new Audio();
+var block10Sound = new Audio();
+
+// 초기화 初始化
+function Init()
+{
+	if(init==false)
+	{
+        
+		myCanvas=document.getElementById("MyCanvas");
+		Context=myCanvas.getContext("2d");
+
+		// 이미지 로딩 讀取Image
+		bgImage.src="./resource/background.png";
+		for(i=0;i<7;++i)blockImage.push(new Image());
+		blockImage[0].src="./resource/elemental0.png"; //earth
+		blockImage[1].src="./resource/elemental1.png"; //wind
+		blockImage[2].src="./resource/elemental2.png"; //water
+		blockImage[3].src="./resource/elemental3.png"; //fire
+		blockImage[4].src="./resource/elemental4.png"; //spark
+		blockImage[5].src="./resource/elemental5.png"; //typhoon
+		blockImage[6].src="./resource/elemental6.png"; //heart
+
+		// 사운드 로딩 讀取Sound
+		bgSound.src="./resource/SecondRun.mp3";
+		bgSound.volume=1.0;
+		bgSound.playbackRate=1.0;
+		blockSound.src="./resource/sound55.mp3";
+		block10Sound.src="./resource/sound39.mp3";
+
+		tetrix_block_init();	// 5가지 블럭 모양 초기화 5個積木模樣初始化
+		tetrix_blockbox_init();	// 블럭상자 초기화 初始化 積木箱子
+		tetrix_block_number=Math.floor(Math.random()*6.9);
+		tetrix_block_this = tetrix_block[tetrix_block_number].slice();
+		score=0;
+		init=true;
+        
+	}
+}
+
+function CheckConflict()
+{
+	var size=tetrix_block_this.length;
+	for(k=0;k<size;k+=2)
+	{
+		check_y = tetrix_block_y + tetrix_block_this[k];
+		check_x = tetrix_block_x + tetrix_block_this[k+1];
+		if(check_y < 0 )continue;	// y좌표가 0보다 적은 사각형은 중돌 검사를 안함 比y坐標少的四角形不會檢查
+		// 겹치는 경우 疊起的時候
+		if(check_x < 0 || check_x >=10 || check_y >= 20 || tetrix_blockbox[check_y][check_x]!=0)return true;
+	}
+	return false;
+}
+function Run()
+{
+    thisBlockis(); // 지금 블록은 무엇인지 보여주는 함수 show in this block 表示現在的積木
+   // nextBlockis();
+    
+	// 블럭을 떨어뜨리지도 않았는데 충돌해 있으면
+	// 게임오버 若Block 還沒掉下來，被碰到，就會GAME OVER
+	if(CheckConflict()) 
+		Mode=MODE_GAMEOVER;
+
+	if(Mode==MODE_GAME)
+	{	
+		bgSound.play();
+
+		// 블럭을 한칸 떨어뜨리고 把一個Block丟下去 
+		tetrix_block_y++;
+
+		// 겹침검사	檢查疊在一起
+		if(CheckConflict())
+		{
+			// 다시 위로 이동시킨 다음再把它放往上面一點
+			tetrix_block_y--;
+			var size=tetrix_block_this.length;
+			// 블럭을 블럭판에 박는다 把積木固定在積木版
+			for(k=0;k<size;k+=2)
+			{
+				check_y = tetrix_block_y + tetrix_block_this[k];
+				check_x = tetrix_block_x + tetrix_block_this[k+1];
+				tetrix_blockbox[check_y][check_x]=tetrix_block_number + 1;
+			}
+			blockSound.play();
+			score++;
+
+			// 꽉참 줄 검사 檢查擠滿
+			for(i=0;i<20;++i)
+			{
+				// 한줄 단위로 0이 아닌 블럭을 세서 一條一條檢查非0的積木  
+				sum=0;
+				for(j=0;j<10;++j)
+					if(tetrix_blockbox[i][j]!=0)
+						sum++;
+
+				// 합계가 10이면 꽉찬 것 共10等於擠滿   exp = 10 -> level 1 up
+				if(sum==10)
+				{
+					// 위의 내용을 아래로 복사해준다. 把上面的內容複製到下面
+					for(k=i;k>0;--k)
+						for(j=0;j<10;++j)
+							tetrix_blockbox[k][j]=tetrix_blockbox[k-1][j];
+					score+=10;
+
+					// 난이도 레벨을 증가시키기 위해 경험치 증가 내려오는 속도와 배경음속도도 증가增加難度，經驗值也增加,背景音樂跟著難度增加 default -=50
+					exp++;
+					if(exp>=10){
+						level++; exp=0;
+						RunEventTime-=50;
+						clearInterval(RunEvent);
+						RunEvent = setInterval(Run, RunEventTime);
+						bgSound.playbackRate=1.0 + (level-1) * 0.05;
+					}
+					block10Sound.play();
+				}
+			}
+
+			// 블럭을 다시 제일 위로 생성시키고 把積木再產生在最上面
+			tetrix_block_y=0;
+			tetrix_block_x=3;
+			// 블럭번호도 바꿔 주자 積木編號都換掉  max 7
+			tetrix_block_number=Math.floor(Math.random()*6.9);
+            tetrix_block_this=tetrix_block[tetrix_block_number].slice();
+            
+		}
+	}
+	else if(Mode==MODE_GAMEOVER)
+	{
+		bgSound.pause();
+	}
+
+	// 그리기 이벤트 呼叫onDraw
+	onDraw();
+}
+
+function RotateBlock()
+{
+	switch(tetrix_block_number)
+	{
+		case 0: case 1: case 2: case 3: case 5: case 6:
+			// 첫번째 블럭 第一個積木
+			// □□□□
+			// 두번째 블럭 第二個積木
+			// □□□
+			//  □
+			// 세번째 블럭 第三個積木
+			// □□
+			//  □□
+			// 네번째 블럭 第四個積木
+			//  □□
+			// □□
+			centerY=0; centerX=1;	// ( 0, 1 ) 지점을 중심 0，1為中心
+			break;
+		case 4:
+			// 다섯번째 블럭 第五個積木
+			// □□
+			// □□
+			return;
+	}
+
+	// 회전 旋轉
+	// x ← -y
+	// y ← x
+	// 이전 형태를 미리 기억 記住以前積木的狀態
+	tetrix_block_save = tetrix_block_this.slice();
+	for(i=0;i<tetrix_block_this.length;i+=2)
+	{
+		y=tetrix_block_this[i+1] - centerX;
+		x=-(tetrix_block_this[i] - centerY);
+		tetrix_block_this[i]=y + centerY;
+		tetrix_block_this[i+1]=x + centerX;
+	}
+
+	// 충돌인 경우 원상복귀 若是衝突再回去
+	if(CheckConflict())
+		tetrix_block_this=tetrix_block_save.slice();
+}
+
+// 키입력 key ↓→↑←
+function onKeyDown(event)
+{
+	// 게임중일 때만 이동 회전키가 작동 只進行遊戲中才會能操作旋轉
+	if(Mode==MODE_GAME)
+	{
+
+		if(event.which==37)	// 왼쪽키 ←
+		{
+			tetrix_block_x--;
+			if(CheckConflict())tetrix_block_x++;
+			else onDraw();
+		}
+		if(event.which==39)	// 오른쪽키 →
+		{
+			tetrix_block_x++;
+			if(CheckConflict())tetrix_block_x--;
+			else onDraw();
+		}
+		if(event.which==40 || event.which==32)	// 아래쪽키↓ , 스페이스키 Space bar
+		{
+			tetrix_block_y++;
+			if(CheckConflict())tetrix_block_y--;
+			else onDraw();
+		}
+		if(event.which==38)	// 위쪽키(회전)↑(旋轉)
+		{
+			RotateBlock();
+			onDraw();
+		}
+	}
+	// 게임오버일 때 재시작 단축키는 Enter 키 若是Game over, 再一次快捷鍵是Enter
+	else if(Mode==MODE_GAMEOVER)
+	{
+		if(event.which==13)	// Enter 키를 누르면 若按Enter
+		{
+			// 재시작
+			tetrix_blockbox_init();	// 블럭상자 초기화 初始化 積木箱子  max:7
+			tetrix_block_number=Math.floor(Math.random()*6.9);
+			tetrix_block_this = tetrix_block[tetrix_block_number].slice();
+			score=0;
+			bgSound.playbackRate=1.0;
+			level=1; exp=0;
+			RunEventTime=500;
+			clearInterval(RunEvent);
+			RunEvent = setInterval(Run, RunEventTime);
+			Mode=MODE_GAME;
+		}
+	}
+}
+
+// draw 이벤트 畫畫
+function onDraw()
+{
+	if(init==false)return;
+	// 전체 테두리
+	Context.strokeStyle="#000";
+	Context.lineWidth=1;
+	Context.strokeRect(0, 0, myCanvas.width-1, myCanvas.height-1);
+	Context.fillStyle="#fcfcfc";
+	Context.fillRect(1, 1, myCanvas.width-2, myCanvas.height-2);
+	Context.drawImage(bgImage, 0, 0);
+	// 블럭 표시 表示積木
+	for(i=0;i<20;++i)
+		for(j=0;j<10;++j)
+		{
+			if(tetrix_blockbox[i][j]==0)
+			{
+				Context.fillStyle="#999";
+				isblock=-1;
+			}
+			else {
+				isblock=tetrix_blockbox[i][j]-1;
+			}
+			
+			// 떨어지는 블럭표시 表示掉下來的積木
+			var size=tetrix_block_this.length;
+			for(k=0;k<size;k+=2)
+			{
+				if(tetrix_block_y+tetrix_block_this[k]==i
+				   && tetrix_block_x+tetrix_block_this[k+1]==j)
+				{
+					isblock=tetrix_block_number;
+					break;
+				}
+			}
+
+			x=tetrix_blockbox_left + j*tetrix_blockbox_boxsize;
+			y=tetrix_blockbox_top + i*tetrix_blockbox_boxsize;
+
+			if(isblock==-1)
+				Context.fillRect(x, y, tetrix_blockbox_boxsize-1, tetrix_blockbox_boxsize-1);
+			else Context.drawImage(blockImage[isblock], x, y);
+		}
+	// 점수표시 表示分數
+	Context.font = "bold 30px 나눔고딕";
+	Context.fillStyle="#eee";
+	Context.strokeStyle="#fff";
+	Context.fillStyle="blue";
+
+	Context.fillText("Score " + score, 50, 90);
+	Context.strokeText("Score " + score, 50, 90);
+
+	Context.fillText("Level " + level, 50, 130);
+	Context.strokeText("Level " + level, 50, 130);
+
+	if(Mode==MODE_GAMEOVER)
+	{
+		Context.fillStyle="red";
+		Context.fillText("GAME OVER", tetrix_blockbox_left + 40, tetrix_blockbox_top + 250);
+        Context.fillText("If you want continue, please press Enter key")
+	}
+}
+
+$(document).ready(function(){
+	Init();
+	RunEvent = setInterval(Run, RunEventTime);
+});
+
+$(document).keydown(function( event ){
+	onKeyDown(event);		
+});
+        
+        
+function thisBlockis(){
+    
+    var ATM1 = document.getElementById('ATM1');
+    if (tetrix_block_number==0){
+    NB = 0;
+
+	ATM1.src = "./resource/elemental"+NB+".png"; 
+    }
+    
+    else if (tetrix_block_number==1){
+    NB = 1;
+    //var ATM1 = document.getElementById('ATM1');
+	ATM1.src = "./resource/elemental"+NB+".png";     
+    
+    }else if (tetrix_block_number==2){
+    NB = 2;
+      //	var ATM1 = document.getElementById('ATM1');
+	ATM1.src = "./resource/elemental"+NB+".png";   
+     
+    }else if (tetrix_block_number==3){
+    NB = 3;
+     // 	var ATM1 = document.getElementById('ATM1');
+	ATM1.src = "./resource/elemental"+NB+".png";   
+    
+    }else if (tetrix_block_number==4){
+    NB = 4;
+      //	var ATM1 = document.getElementById('ATM1');
+	ATM1.src = "./resource/elemental"+NB+".png"; 
+         
+    
+    }else if (tetrix_block_number==5){
+    NB = 5;
+      //	var ATM1 = document.getElementById('ATM1');
+	ATM1.src = "./resource/elemental"+NB+".png"; 
+            
+    }else if (tetrix_block_number==6){
+    NB = 6;
+      //	var ATM1 = document.getElementById('ATM1');
+	ATM1.src = "./resource/elemental"+NB+".png"; 
+        
+         }        
+    }
+    
+    
+/*function nextBlockis(){
+    
+    var ATM2 = document.getElementById('ATM2');
+       
+    tetrix_block_number==Math.floor(Math.random()*6.9);
+   
+    if (tetrix_block_number==0){
+    NB = 0;
+	ATM2.src = "./resource/elemental"+NB+".png"; 
+    }
+    
+    else if (tetrix_block_number==1){
+    NB = 1;
+    //var ATM1 = document.getElementById('ATM1');
+	ATM2.src = "./resource/elemental"+NB+".png";     
+    
+    }else if (tetrix_block_number==2){
+    NB = 2;
+      //	var ATM1 = document.getElementById('ATM1');
+	ATM2.src = "./resource/elemental"+NB+".png";   
+     
+    }else if (tetrix_block_number==3){
+    NB = 3;
+     // 	var ATM1 = document.getElementById('ATM1');
+	ATM2.src = "./resource/elemental"+NB+".png";   
+    
+    }else if (tetrix_block_number==4){
+    NB = 4;
+      //	var ATM1 = document.getElementById('ATM1');
+	ATM2.src = "./resource/elemental"+NB+".png"; 
+         
+    
+    }else if (tetrix_block_number==5){
+    NB = 5;
+      //	var ATM1 = document.getElementById('ATM1');
+	ATM2.src = "./resource/elemental"+NB+".png"; 
+            
+    }else if (tetrix_block_number==6){
+    NB = 6;
+      //	var ATM1 = document.getElementById('ATM1');
+	ATM2.src = "./resource/elemental"+NB+".png"; 
+        
+         }        
+    }
+  */  
+</script>
+<center> 
+<canvas id="MyCanvas" width=800 height=600>
+Canvas is not supported.
+</canvas>
+<br/>
+禹泰賢 遊戲說明 ： ←→ 方向調整 ↑：旋轉積木 Enter ： 重新開始 || 增加難度時目前上升的速度值 ： 50<br/>
+<div id="ATM">
+<img id="ATM1" img src="./resource/elemental0.png" width="95" height ="95">
+This Block</div>      
+<span id=debug></span>
+    </center>
+    </body>
+    </center>
+</html>
